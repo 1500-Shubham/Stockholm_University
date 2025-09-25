@@ -25,6 +25,8 @@ def load_data(path: str) -> pd.DataFrame:
     pd.DataFrame
     """
     # TODO: implement
+    df = pd.read_csv(path)
+    return df
     raise NotImplementedError("Implement load_data()")
 
 
@@ -54,6 +56,12 @@ def preprocess(df: pd.DataFrame) -> Tuple[np.ndarray, List[str], pd.DataFrame]:
     #   df_clean = ...
     #   feature_names = ...
     #   X_scaled = StandardScaler().fit_transform(...)
+    df.drop(columns=["Customer Id", "Defaulted", "Address"], inplace=True)
+    df.dropna(inplace=True) 
+    df_clean = df.select_dtypes(include=[np.number])
+    feature_names = df_clean.columns.tolist()
+    X_scaled = StandardScaler().fit_transform(df_clean)
+    return (X_scaled,feature_names,df_clean)
     raise NotImplementedError("Implement preprocess(df)")
     
     
@@ -71,6 +79,13 @@ def elbow_inertia(X: np.ndarray, k_min: int = 1, k_max: int = 10, random_state: 
       - Return the list of inertias (length should be k_max - k_min + 1)
     """
     # TODO: implement
+    intertias = []
+    for k in range(k_min,k_max+1):
+        kmeans = KMeans(n_clusters=k, random_state=42)
+        kmeans.fit(X)
+        # intertias.append(float(f"{kmeans.inertia_:.4f}"))
+        intertias.append(round(kmeans.inertia_,4))
+    return intertias
     raise NotImplementedError("Implement elbow_inertia(X, k_min, k_max, random_state)")
 
 
@@ -86,6 +101,7 @@ def identify_elbow_k() -> int:
     The tests will assert the number you return for this dataset.
     """
     # TODO: implement heuristic and return k for this dataset
+    return 2
     raise NotImplementedError("Implement identify_elbow_k()")
     
     
@@ -104,6 +120,10 @@ def kmeans_cluster(X: np.ndarray, n_clusters: int, random_state: int = 42) -> Tu
       - Return (labels, km)
     """
     # TODO: implement
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    kmeans.fit(X)
+    labels = kmeans.labels_
+    return (labels,kmeans)
     raise NotImplementedError("Implement kmeans_cluster(X, n_clusters, random_state)")
 
 
@@ -127,6 +147,15 @@ def kmeans_add_labels_and_centroids(
       - Return (df_with_labels, centroids_df)
     """
     # TODO: implement
+    df_clean_lables = df_clean.copy()
+    df_clean_lables["cluster_kmeans"] = labels
+    # df_clean_lables.head()
+
+    # print(kmeans.cluster_centers_)
+
+    centroids_df = df_clean_lables.groupby("cluster_kmeans").mean()
+    # df_clean["df_with_labels"].unique()
+    return (df_clean_lables,centroids_df)
     raise NotImplementedError("Implement kmeans_add_labels_and_centroids(...)")
     
 
@@ -157,6 +186,29 @@ def dbscan_cluster_to_target_k(
       - If none match, return the best/last attempt
     """
     # TODO: implement
+    eps_values = [0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0]
+    min_samples_values = [2, 3, 4, 5, 6]
+    l = None
+    d = None
+    found = False
+    for e in eps_values:
+        for minimum_samples in min_samples_values:
+            dbscan = DBSCAN(eps=e, min_samples=minimum_samples)
+            labels = dbscan.fit_predict(X)
+            count = _count_clusters(labels)
+            # print(count)
+            if( count == target_k):
+                l = labels
+                d = dbscan
+                found = True
+                break
+            else:
+              # If none match, return the best/last attempt
+                l = labels
+                d = dbscan
+        if found == True:
+          break
+    return (l,d)
     raise NotImplementedError("Implement dbscan_cluster_to_target_k(X, target_k)")
 
 
@@ -170,6 +222,10 @@ def dbscan_add_labels(df_clean: pd.DataFrame, labels: np.ndarray) -> pd.DataFram
       - Return the new DataFrame
     """
     # TODO: implement
+    df_clean_dbscan = df_clean.copy()
+    df_clean_dbscan["cluster_dbscan"] = labels
+
+    return df_clean_dbscan
     raise NotImplementedError("Implement dbscan_add_labels(df_clean, labels)")
 
 
@@ -198,6 +254,21 @@ def compute_silhouettes(
       - Return (km_sil, db_sil) as floats
     """
     # TODO: implement
+    kmeans_silhouette_score = silhouette_score(X, km_labels)
+    mask_array = db_labels != -1
+    X_scaled_after_mask = X[mask_array]
+    # print(X_scaled_after_mask.shape)
+    dbscan_lables_after_mask = db_labels[mask_array]
+    # print(np.unique(dbscan_lables_after_mask))
+    dbscan_silhouette_score = None
+    # dbscan_silhouette_score = silhouette_score(X_scaled_after_mask, dbscan_lables_after_mask)
+    if _count_clusters(dbscan_lables_after_mask) >= 2 and dbscan_lables_after_mask.size >=2:
+        dbscan_silhouette_score = silhouette_score(X_scaled_after_mask, dbscan_lables_after_mask)
+    else:
+        dbscan_silhouette_score = np.nan
+    # mask out noise; if at least 2 clusters remain and >=2 samples, compute score on masked data
+              # else set db_sil = np.nan
+    return (kmeans_silhouette_score,dbscan_silhouette_score)
     raise NotImplementedError("Implement compute_silhouettes(X, km_labels, db_labels)")
 
 
