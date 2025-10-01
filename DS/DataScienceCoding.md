@@ -1,8 +1,14 @@
 # Numpy
+np.random.seed(0)
 np.nan
 float(f'{avg_stay_len:.4f}'))
 <!-- Calculate in np array -->
 np.isnan(array).sum()
+<!-- Index capture and create an array -->
+mask_array = df_copy['cluster_dbscan'] != -1
+print(mask_array)
+X_scaled = X_scaled[mask_array]
+df_copy = df_copy[mask_array]
 
 # Pandas
 df = pd.read_csv("hotel_bookings.csv")
@@ -60,6 +66,8 @@ df.drop(columns=['column1', 'column2'], inplace=False)
 <!-- Correlation Matrix -->
 correlation_matrix = df_after_imputation[numerical_columns].corr()
 
+df_cleaned = df_new.dropna() remove rows with nan vlaues default axis=0
+
 # Scikit-Learn
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -68,7 +76,7 @@ from sklearn.decomposition import PCA
 imp = SimpleImputer(strategy="median")
 num_imputer = imp.fit_transform(df_numerical)
 <!-- Convert numpy array back to pd -->
-num_df = pd.DataFrame(a, columns=numerical_columns)
+num_df = pd.DataFrame(a, columns=numerical_columns) can also use index
 
 scaler = StandardScaler()
 num_scaled = scaler.fit_transform(num_imputer)
@@ -85,6 +93,7 @@ X_pca[:,0] this gives all rows converted value wrt pca1(eigen vectors)
 X_pca = X.dot(components.T)
 <!-- Whenever trying to get variables good accoring to pca -->
 This way we fit the X according to columns
+<!-- Numpy to dataframe with names of columns -->
 loadings = pd.DataFrame(
     # converting pca values in columns thats why
     pca.components_.T,
@@ -93,6 +102,20 @@ loadings = pd.DataFrame(
     # index parameter sets the row labels of a DataFrame.
 )
 loadings["PC1"].sort_values(key=abs, ascending=False)
+x_pca = X.dot(pca_array.components_.T)
+print("X1 feauter",X[:,0],"XPCA1",x_pca[:,0])
+
+<!-- Kmeans -->
+kmeans = KMeans(n_clusters=k, init='k-means++',random_state=42).fit(X_scaled)
+kmeans.labels_ ,interia_ , 
+<!-- DBSCAN -->
+ dbscan = DBSCAN(eps=e, min_samples=sam).fit(X_scaled)
+ dbscan.labels_ This has 1,0,-1 also noise
+ <!-- Silhoute Score -->
+db_sil =silhouette_score(X_scaled, predicted_labels) 
 
 # Flow For Question
-df load , EDA (missing values impute , numerical(median) and categorical(mode) , select features for analysis = Univariate plt histogram, bivariate = x and y both (median se woh feature differ kar raha ache se grouping), multivariate (correlation_matrix))
+- df load , 
+- EDA (missing values impute , numerical(median) and categorical(mode) , select features for analysis = Univariate plt histogram, bivariate = x and y both (median se woh feature differ kar raha ache se grouping), multivariate (correlation_matrix))
+- Standarize PCA
+- Kmeans DBscan algo perform now
