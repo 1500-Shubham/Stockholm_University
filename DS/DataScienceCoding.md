@@ -10,6 +10,17 @@ print(mask_array)
 X_scaled = X_scaled[mask_array]
 df_copy = df_copy[mask_array]
 
+np.corrcoef computes Pearson correlation = covariance / (σX σY).
+reason to do x.Transpose this funciton needs a single feature in a single row all values
+this need (x1 feautres [all n values], x2 feature [all n values] , y [all n values] )
+calculate corre matrix = 3*3 feautres 
+[[1.         0.50285852]. toh capture correlation(x,y) using [0,1] index of 2d array
+ [0.50285852 1.        ]]
+
+X = np.array([30, 10, 20])
+idx = np.argsort(X)
+print(idx)         # [1 2 0] now this array can be used to sort X.values column or y_pred
+
 # Pandas
 df = pd.read_csv("hotel_bookings.csv")
 df.head()
@@ -68,6 +79,14 @@ correlation_matrix = df_after_imputation[numerical_columns].corr()
 
 df_cleaned = df_new.dropna() remove rows with nan vlaues default axis=0
 
+<!-- #One hot encoding of column Gender Male to 0 female to 1 -->
+df['Gender'] = df['Gender'].map({'Male': 0, 'Female': 1})
+<!-- If more than 2 distinct variablews : new columns added -->
+pd.get_dummies() (recommended for multiple categories)
+df = pd.get_dummies(df, columns=['Dummy'], prefix='Dummy')
+<!-- Dummy_A   Dummy_B   Dummy_C -->
+
+
 # Scikit-Learn
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -105,6 +124,7 @@ loadings["PC1"].sort_values(key=abs, ascending=False)
 x_pca = X.dot(pca_array.components_.T)
 print("X1 feauter",X[:,0],"XPCA1",x_pca[:,0])
 
+from sklearn.cluster import KMeans
 <!-- Kmeans -->
 kmeans = KMeans(n_clusters=k, init='k-means++',random_state=42).fit(X_scaled)
 kmeans.labels_ ,interia_ , 
@@ -114,8 +134,72 @@ kmeans.labels_ ,interia_ ,
  <!-- Silhoute Score -->
 db_sil =silhouette_score(X_scaled, predicted_labels) 
 
+<!-- Lab3 -->
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import root_mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import RidgeCV, LassoCV, LinearRegression
+
+a) r2_hw = lin_hw.score(X_hw, y_hw) x2D and y model useds
+r2_score(y_hw, y_pred)   # both (n,) 
+<!-- lin.score(X_hw, y_hw)   # internally calls r2_score(y, y_pred) -->
+internally prediction call x_hw 2d -> y_pred (n,) then use variance formula ypred and y_hw
+
+b) RMSE X_hw(n,1) -> .ravel() -> flatten (n,) to compare directly
+root_mean_squared_error(y_hw, (s * X_hw + b).ravel())
+
+
+a = df_hw['Height(m)'].values
+a = a.reshape(-1,1) 2D -1 = “auto-calculate rows” 1 = “force one column” :
+OR df_hw[['Height(m)']].values 2D arrays
+
+
+
+ <!-- Model Fit and slope and intercept -->
+<!-- # model fit using x[2d] and y[1d] -->
+lin_hw = LinearRegression().fit(X_hw, y_hw)
+lin_hw.coef_ [b1 b2 b3 all features coefficient] [0] to get 1st feature 
+lin_hw.intercept_
+lin_bmi.predict(Xb)
+
+<!-- Creating sample --> min max and number of points
+np.linspace(X_hw.min(), X_hw.max(), 200).reshape(-1, 1)
+
+<!-- Pipeline  -->
+ridge_pipe = Pipeline([
+    ("scaler",StandardScaler()),
+    ("ridge",RidgeCV())
+    # Pipelines are a convenient way to chain preprocessing steps and the model together, and to be consistent between different models.
+    # your pipeline should contain a StandardScaler step and a RidgeCV step, but in what order
+])
+<!-- Get lamba or alpha value after pipeline worked BEST Fit hone ke baad-->
+ridge_alpha = getattr(ridge_pipe.named_steps['ridge'], 'alpha_', None)
+
+<!-- Ridge and Lasso Alone -->
+reg = Ridge(alpha=.5) Lasso(alpha=0.1)
+reg.fit(X,Y)
+reg.coef_
+reg.intercept_
+
+<!-- Standard scaler and scaling back using the scaled value -->
+scaler = StandardScaler().fit(X_train)
+scale_ = scaler.scale_
+Back to original
+ridge_coefs = ridge.coef_ / scale_
+
 # Flow For Question
 - df load , 
+
 - EDA (missing values impute , numerical(median) and categorical(mode) , select features for analysis = Univariate plt histogram, bivariate = x and y both (median se woh feature differ kar raha ache se grouping), multivariate (correlation_matrix))
-- Standarize PCA
-- Kmeans DBscan algo perform now
+
+-  Always Standarize data before giving to any algorithm
+
+- Clustering
+    - Standarize PCA
+    - Kmeans DBscan algo perform now
+
+- Regression
+    - Chossing X and Y correlation dekh lo
+    - Different score after predicting
+
