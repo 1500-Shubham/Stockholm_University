@@ -1,7 +1,9 @@
+All API inside on sklearn 
 # Numpy
 np.random.seed(0)
 np.nan
 float(f'{avg_stay_len:.4f}'))
+round(float(prec_lr), 3)
 <!-- Calculate in np array -->
 np.isnan(array).sum()
 <!-- Index capture and create an array -->
@@ -202,4 +204,50 @@ ridge_coefs = ridge.coef_ / scale_
 - Regression
     - Chossing X and Y correlation dekh lo
     - Different score after predicting
+
+# Hw3 and 4
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, accuracy_score,  precision_score, recall_score, f1_score
+
+X, y = make_classification(n_samples=400, n_features=2, n_classes=2, n_redundant=0, n_clusters_per_class=1, class_sep=0.8, random_state=42)
+tree = DecisionTreeClassifier(max_depth=4, random_state=42)
+logit = LogisticRegression()
+LogisticRegression(penalty=penalty, C=C, solver=solver, max_iter=2000)
+knn = KNeighborsClassifier(n_neighbors=5)
+nb = GaussianNB()
+round(float(accuracy_score(y_test, tree.predict(X_test))), 3))
+
+cm = confusion_matrix(y_test, y_pred)
+ConfusionMatrixDisplay(cm).plot()
+
+numeric = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", MinMaxScaler())])
+categorical = Pipeline([("impute", SimpleImputer(strategy="most_frequent")), ("onehot", OneHotEncoder(handle_unknown="ignore", ))])
+num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+<!-- Name + Transformer or new pipeline + Which columns from X you want to apply that -->
+preprocess = ColumnTransformer([("num", numeric, num_cols), ("cat", categorical, cat_cols)])
+lr = Pipeline([("preprocess", preprocess), ("model", LogisticRegression(max_iter=1000))])
+
+<!-- Getting value back from pipelines example-->
+lr.named_steps["model"].coef_.ravel() -> lr.named_steps["model"] return model jo hai now uske function
+<!-- Getting value back from column transformer -->
+pre = lr.named_steps["preprocess"] -> this is a column transformer (consist of transformer or pipeline in between)
+pre.named_transformers_["num"].named_steps["impute"] -> pre.named_transformers_["num"] gives numerical pipeline -> .names_Step return the imputer and its output
+
+<!-- Decision Tree -->
+tree = Pipeline([("preprocess", preprocess), ("model", DecisionTreeClassifier(max_depth=4, random_state=42))]).fit(X_train, y_train)
+importances = tree.named_steps["model"].feature_importances_ -> for importance of each feature basically gain typw
+
+<!-- Naive Bayes -->
+from sklearn.naive_bayes import MultinomialNB
+nb = Pipeline([("preprocess", preprocess), ("model", MultinomialNB(alpha=1.0))]).fit(X_train, y_train)
+y_hat_nb = nb.predict(X_test)
+
+<!-- Handling Pipeline -->
+numeric = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", MinMaxScaler())])
+preprocessing_numeric = numeric.fit(X_train[num_cols])
+    <!-- Fit and Tranform like previously we did fit and predict -->
+preprocessed_numeric_train = preprocessing_numeric.transform(X_train[num_cols])
+<!-- Hamming Distance for categorical Columns Data -->
+S-1 # Convert sparse matrices to dense arrays for pairwise_distances
+cat_train_dense = preprocessed_categorical_train.toarray()
+hamming_dist = pairwise_distances(cat_train_dense, metric='hamming')
 
