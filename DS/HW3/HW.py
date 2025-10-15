@@ -34,7 +34,59 @@ def clean_data(df):
     pd.DataFrame: The cleaned DataFrame.
     missing_values_count (dict): A dictionary with the count of missing values per column after cleaning.
     """
-    pass
+    df = df.copy()
+
+    categorical_columns = [
+        'Sex', 'ChestPainType', 'FBS', 'RestECG',
+        'ExAng', 'Slope', 'Ca', 'Thal'
+    ]
+    numerical_columns = [
+        'Age', 'RestBP', 'Chol', 'MaxHR', 'Oldpeak'
+    ]
+
+    # All ? with NAN first
+    df = df.replace('?', np.nan)
+
+    # All are numeric column with values later on category column by its nature
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    valid_values = {
+        'Sex': [0, 1],
+        'ChestPainType': [1, 2, 3, 4],
+        'FBS': [0, 1],
+        'RestECG': [0, 1, 2],
+        'ExAng': [0, 1],
+        'Slope': [1, 2, 3],
+        'Ca': [0, 1, 2, 3],
+        'Thal': [3, 6, 7],
+        'Num': [0, 1, 2, 3, 4]
+    }
+    column_including_target_as_categorical = categorical_columns + ['Num']
+    for col in column_including_target_as_categorical:
+        if col in df.columns:
+            df.loc[~df[col].isin(valid_values[col]), col] = np.nan
+
+    for col in numerical_columns:
+        if col in df.columns:
+            if col == 'Oldpeak':
+            # Oldpeak can be 0, but not negative
+                df.loc[df[col] < 0, col] = np.nan
+            elif col == 'Age':
+                # Age can't be <18 since adult patients bola hai or > 100
+                df.loc[(df[col] < 18) | (df[col] > 100), col] = np.nan
+            elif col == 'Chol':
+                # Cholesterol should be between 0 and 1000
+                df.loc[(df[col] <=0) | (df[col] >= 600), col] = np.nan 
+            elif col == 'MaxHR':
+                df.loc[(df[col] <=0) | (df[col] >= 220), col] = np.nan  
+            else:
+                # For other continuous features, 0 or negative are invalid
+                df.loc[df[col] <= 0, col] = np.nan
+
+    missing_values_count = df.isna().sum().to_dict()
+
+    return df, missing_values_count
 
 
 # Task 3: Categorical Features Imputation
@@ -65,8 +117,39 @@ def impute_missing_categorical(df_train, df_val, df_test, categorical_columns):
     pd.DataFrame: The validation DataFrame with imputed categorical features.
     pd.DataFrame: The test DataFrame with imputed categorical features.
     """
+    # Making copy of original pd
+    X_train_cat = df_train[categorical_columns].copy()
+    X_val_cat = df_val[categorical_columns].copy()
+    X_test_cat = df_test[categorical_columns].copy()
 
-    pass
+    # KNN Imputer 
+    imputer = KNNImputer(n_neighbors=5, weights='distance')
+    imputer.fit(X_train_cat)
+
+    # Fit using Xtrraind and not transform
+    X_train_imputed = imputer.transform(X_train_cat)
+    X_val_imputed = imputer.transform(X_val_cat)
+    X_test_imputed = imputer.transform(X_test_cat)
+
+    for i, col in enumerate(categorical_columns):
+        valid_values = np.sort(df_train[col].dropna().unique())  # original values
+        # Function to snap each imputed value to nearest valid value
+        def snap_to_nearest(value):
+            diffs = np.abs(valid_values - value)
+            min_diff = diffs.min()
+            nearest_values = valid_values[diffs == min_diff]
+            return nearest_values.min()  # pick smaller if tie
+        X_train_imputed[:, i] = np.vectorize(snap_to_nearest)(X_train_imputed[:, i])
+        X_val_imputed[:, i] = np.vectorize(snap_to_nearest)(X_val_imputed[:, i])
+        X_test_imputed[:, i] = np.vectorize(snap_to_nearest)(X_test_imputed[:, i])
+
+    #Convert to Pd dataframe and return 
+    X_train_imputed = pd.DataFrame(X_train_imputed, columns=categorical_columns)
+    X_val_imputed = pd.DataFrame(X_val_imputed, columns=categorical_columns)
+    X_test_imputed = pd.DataFrame(X_test_imputed, columns=categorical_columns)
+
+    # returning the value
+    return X_train_imputed, X_val_imputed, X_test_imputed
 
 
 # Task 4: Numerical Features Imputation
@@ -111,7 +194,51 @@ def impute_numerical_features(df_train, df_val, df_test, numerical_columns):
     pd.DataFrame: The validation DataFrame with imputed numerical features.
     pd.DataFrame: The test DataFrame with imputed numerical features.
     """
-    pass
+    # Step1-3
+    train_num = df_train[numerical_columns].copy()
+    val_num = df_val[numerical_columns].copy()
+    test_num = df_test[numerical_columns].copy()
+
+    train_idx, val_idx, test_idx = train_num.index, val_num.index, test_num.index
+
+    train_imputed = train_num.copy()
+    val_imputed = val_num.copy()
+    test_imputed = test_num.copy()
+
+    while (train_imputed.isnull().any().any() or val_imputed.isnull().any().any() or test_imputed.isnull().any().any()):
+        missing_counts = train_imputed.isnull().sum()
+        cols_with_missing = missing_counts[missing_counts > 0]
+        if len(cols_with_missing) == 0:
+            break
+
+        col_to_impute = cols_with_missing.sort_values().index[0]
+        not_missing = train_imputed[col_to_impute].notnull()
+
+        X_train_fit = train_imputed.loc[not_missing].drop(columns=[col_to_impute])
+        y_train_fit = train_imputed.loc[not_missing, col_to_impute]
+
+        # Fill missing predictors temporarily
+        X_train_fit = X_train_fit.fillna(X_train_fit.mean())
+
+        if len(X_train_fit) > 0:
+            model = Lasso(alpha=0.01, max_iter=2000)
+            model.fit(X_train_fit.values, y_train_fit.values)
+
+            for df in [train_imputed, val_imputed, test_imputed]:
+                missing_mask = df[col_to_impute].isnull()
+                if missing_mask.any():
+                    X_missing = df.loc[missing_mask].drop(columns=[col_to_impute]).fillna(X_train_fit.mean())
+                    if len(X_missing) > 0:
+                        df.loc[missing_mask, col_to_impute] = model.predict(X_missing.values)
+
+    # Fallback mean imputation
+    for col in numerical_columns:
+        col_mean = train_imputed[col].mean()
+        train_imputed[col].fillna(col_mean, inplace=True)
+        val_imputed[col].fillna(col_mean, inplace=True)
+        test_imputed[col].fillna(col_mean, inplace=True)
+
+    return train_imputed.loc[train_idx], val_imputed.loc[val_idx], test_imputed.loc[test_idx]
 
 def merge_imputed(df_cat, df_num):
     """
@@ -130,11 +257,12 @@ def merge_imputed(df_cat, df_num):
     Returns:
     pd.DataFrame: The merged DataFrame containing both categorical and numerical features.
     """
-    pass
+    merged = pd.concat([df_cat, df_num], axis=1)
+    return merged
 
 
 # Task 5: Classification Using a Single Split
-def train_and_evaluate_single_split(X_train, X_val, y_train, y_val, model, hp):
+def train_and_evaluate_single_split(X_train, X_val, y_train, y_val, cat_cols,num_cols,model, hp):
     """
     Task: Classification Using a Single Split
     ------------------------------------------
@@ -162,11 +290,31 @@ def train_and_evaluate_single_split(X_train, X_val, y_train, y_val, model, hp):
     Returns:
     dict: A dictionary containing two keys: 'params' (training parameters) and 'F1 scores' (F1 score). Each key should have the correct value.
     """
-    pass
+    model.set_params(**hp)
+    # /Pipeline and Column 
+    preprocessor = ColumnTransformer([
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+        ('num', StandardScaler(), num_cols)
+    ])
+
+    pipeline = Pipeline([
+        ('preprocess', preprocessor),
+        ('classifier', model)
+    ])
+
+    # fitting values
+    pipeline.fit(X_train, y_train.values.ravel())
+
+
+    y_pred = pipeline.predict(X_val)
+
+    f1 = f1_score(y_val, y_pred)
+
+    return {'params': hp, 'F1 scores': f1}
 
 
 # Task 6: Classification Using Cross-Validation
-def train_and_evaluate_cross_validation(X, y, model, hp, cv):
+def train_and_evaluate_cross_validation(X, y, cat_cols,num_cols,model, hp, cv):
     """
     Task: Classification Using Cross-Validation
     --------------------------------------------
@@ -189,4 +337,43 @@ def train_and_evaluate_cross_validation(X, y, model, hp, cv):
     Returns:
     dict: A dictionary containing two keys: 'params' (training parameters) and 'Average F1 scores' (F1 score). Each key should have the correct value.
     """
-    pass
+    f1_scores = []
+
+    # Set model hyperparameters
+    model.set_params(**hp)
+
+    
+    # ColumnTransformer for preprocessing
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols),
+            ('num', StandardScaler(), num_cols)
+        ]
+    )
+
+    # Pipeline
+    pipeline = Pipeline([
+        ('preprocess', preprocessor),
+        ('model', model)
+    ])
+
+    # Stratified K-Fold
+    skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=8)
+
+    for train_idx, val_idx in skf.split(X, y):
+        X_train_fold, X_val_fold = X.iloc[train_idx], X.iloc[val_idx]
+        y_train_fold, y_val_fold = y.iloc[train_idx], y.iloc[val_idx]
+
+
+        y_train_fold = y_train_fold.squeeze()
+        y_val_fold = y_val_fold.squeeze()
+
+        pipeline.fit(X_train_fold, y_train_fold)
+        y_pred = pipeline.predict(X_val_fold)
+
+        f1_scores.append(f1_score(y_val_fold, y_pred))
+
+    return {
+        'params': hp,
+        'Average F1 scores': np.mean(f1_scores)
+    }

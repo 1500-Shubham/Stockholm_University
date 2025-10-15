@@ -1,4 +1,5 @@
 All API inside on sklearn 
+
 # Numpy
 np.random.seed(0)
 np.nan
@@ -24,6 +25,7 @@ idx = np.argsort(X)
 print(idx)         # [1 2 0] now this array can be used to sort X.values column or y_pred
 
 # Pandas
+X = pd.concat([X_train_imputed, X_val_imputed], ignore_index=True)
 df = pd.read_csv("hotel_bookings.csv")
 df.head()
 pd.concat([num_df,cat_df],axis=1)
@@ -39,7 +41,10 @@ df.loc[df['adr'] < 0, 'adr'].count()
 df= df[df['total_guests'] > 0] [true false true for each row value match]
 <!-- Filling condition based any column -->
 df.loc[df['adr'] < 0, 'adr'] = np.nan
- df.loc[~df['Sex'].isin([0, 1]), 'Sex'] = np.nan
+df = df.replace('?', np.nan) eveywhere replace
+df.loc[~df['Sex'].isin([0, 1]), 'Sex'] = np.nan
+
+y_train = pd.DataFrame([0 if i == 0 else 1 for i in y_train], columns=['Num'])
  <!-- if adr < 0, set it to NaN --> df[key] = np.nan
 for key,item in enumerate(df['adr']):
     print(key,item)
@@ -236,6 +241,13 @@ pre.named_transformers_["num"].named_steps["impute"] -> pre.named_transformers_[
 <!-- Decision Tree -->
 tree = Pipeline([("preprocess", preprocess), ("model", DecisionTreeClassifier(max_depth=4, random_state=42))]).fit(X_train, y_train)
 importances = tree.named_steps["model"].feature_importances_ -> for importance of each feature basically gain typw
+
+<!-- Stratified K fold -->
+ skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=8)
+
+    for train_idx, val_idx in skf.split(X, y):
+        X_train_fold, X_val_fold = X.iloc[train_idx], X.iloc[val_idx]
+        now fit pipeline.fit(X_train_fold,y_train_fold)
 
 <!-- Naive Bayes -->
 from sklearn.naive_bayes import MultinomialNB
