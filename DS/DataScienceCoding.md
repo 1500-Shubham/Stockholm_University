@@ -39,6 +39,7 @@ df.loc[df['adr'] < 0, 'adr'].count()
 df= df[df['total_guests'] > 0] [true false true for each row value match]
 <!-- Filling condition based any column -->
 df.loc[df['adr'] < 0, 'adr'] = np.nan
+ df.loc[~df['Sex'].isin([0, 1]), 'Sex'] = np.nan
  <!-- if adr < 0, set it to NaN --> df[key] = np.nan
 for key,item in enumerate(df['adr']):
     print(key,item)
@@ -68,7 +69,7 @@ column.index can do [0] [1] to get index name
 index and column are different things index parameter sets the row labels of a DataFrame.
 
 <!-- sorting a df -->
-mean_cancellation_rate.sort_values(ascending=False)
+mean_cancellation_rate.sort_values(ascending=False,by='column name')
 <!-- columns inside value match with a list -->
 df[df['market_segment'].isin(required_columns)]
 
