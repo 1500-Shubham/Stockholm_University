@@ -5,13 +5,17 @@ np.random.seed(0)
 np.nan
 float(f'{avg_stay_len:.4f}'))
 round(float(prec_lr), 3)
-<!-- Calculate in np array -->
+<!-- Calculate in np array --> Otherwise in df.isna() command hai
 np.isnan(array).sum()
 <!-- Index capture and create an array -->
 mask_array = df_copy['cluster_dbscan'] != -1
 print(mask_array)
 X_scaled = X_scaled[mask_array]
 df_copy = df_copy[mask_array]
+
+# A.shape = (891, 2)
+# B.shape = (891, 171)
+combined = np.concatenate((A, B), axis=1)
 
 np.corrcoef computes Pearson correlation = covariance / (σX σY).
 reason to do x.Transpose this funciton needs a single feature in a single row all values
@@ -113,6 +117,15 @@ pca_array = pca.fit(X)
 print(pca_array.components_) -> eigen vectors
 pca_array.explained_variance_ratio) -> Eigen values hai 
 
+<!-- Printing which column is contributing max to that pca -->
+ratio, comps = pca.explained_variance_ratio_, pca.components_
+print('variance ratios:', ratio, 'sum:', ratio.sum())
+features = hw.PCA_FEATURES
+for i, row in enumerate(comps):
+    j = np.argmax(np.abs(row)) get index from that complete array row easy
+    print(f'PC{i+1} top feature: {features[j]} (loading={row[j]:.3f})')
+
+
 <!-- CREATE XPCA1, XPCA2-->
 X_pca= pca.fit_transform(X_scaled)
 X_pca[:,0] this gives all rows converted value wrt pca1(eigen vectors)
@@ -139,7 +152,7 @@ kmeans.labels_ ,interia_ ,
 <!-- DBSCAN -->
  dbscan = DBSCAN(eps=e, min_samples=sam).fit(X_scaled)
  dbscan.labels_ This has 1,0,-1 also noise
- <!-- Silhoute Score -->
+<!-- Silhoute Score -->
 db_sil =silhouette_score(X_scaled, predicted_labels) 
 
 <!-- Lab3 -->
@@ -165,9 +178,9 @@ OR df_hw[['Height(m)']].values 2D arrays
 
 
  <!-- Model Fit and slope and intercept -->
-<!-- # model fit using x[2d] and y[1d] -->
+<!-- # model fit using x[2d] need to reshape(-1,1) and y[1d] -->
 lin_hw = LinearRegression().fit(X_hw, y_hw)
-lin_hw.coef_ [b1 b2 b3 all features coefficient] [0] to get 1st feature 
+lin_hw.coef_ [b1 b2 b3 all features coefficient] -> [0] to get 1st feature 
 lin_hw.intercept_
 lin_bmi.predict(Xb)
 
@@ -183,12 +196,15 @@ ridge_pipe = Pipeline([
 ])
 <!-- Get lamba or alpha value after pipeline worked BEST Fit hone ke baad-->
 ridge_alpha = getattr(ridge_pipe.named_steps['ridge'], 'alpha_', None)
-
+OR BELOW 
 <!-- Ridge and Lasso Alone -->
+<!-- RidgeCV Ridge regression with built-in cross validation. -->
 reg = Ridge(alpha=.5) Lasso(alpha=0.1)
 reg.fit(X,Y)
 reg.coef_
 reg.intercept_
+RidgeCV().function calling
+ridge_pipe.named_steps['ridge'].alpha_ 
 
 <!-- Standard scaler and scaling back using the scaled value -->
 scaler = StandardScaler().fit(X_train)
@@ -196,6 +212,10 @@ scale_ = scaler.scale_
 Back to original
 ridge_coefs = ridge.coef_ / scale_
 
+<!-- Cluster Purity Calculate using confusion matrix -->
+cm = confusion_matrix(true_labels, predicted_labels)
+purity = np.sum(np.max(cm, axis=0)) / np.sum(cm)
+since majority element jaha belong us cluster ka main point wahi hai
 # Flow For Question
 - df load , 
 
@@ -255,7 +275,7 @@ nb = Pipeline([("preprocess", preprocess), ("model", MultinomialNB(alpha=1.0))])
 y_hat_nb = nb.predict(X_test)
 
 <!-- Handling Pipeline -->
-numeric = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", MinMaxScaler())])
+numeric = Pipeline([("impute", SimpleImputer(strategy="median")(strategy="most_frequent")//for categorical column), ("scale", MinMaxScaler())])
 preprocessing_numeric = numeric.fit(X_train[num_cols])
     <!-- Fit and Tranform like previously we did fit and predict -->
 preprocessed_numeric_train = preprocessing_numeric.transform(X_train[num_cols])
