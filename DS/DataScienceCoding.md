@@ -41,6 +41,9 @@ df['market_segment'].value_counts() - unique value counts
 (df['children']).isna().sum())
 negative_adr_count = (df['adr'] < 0).sum()
 df.loc[df['adr'] < 0, 'adr'].count()
+<!-- Add a new row on column -->
+performance_df.loc[len(performance_df)] = result
+Here no need to give column name agar result dictinoary usi form mein
 <!-- Update based on some condition -->
 df= df[df['total_guests'] > 0] [true false true for each row value match]
 <!-- Filling condition based any column -->
@@ -93,6 +96,7 @@ df_cleaned = df_new.dropna() remove rows with nan vlaues default axis=0
 
 <!-- #One hot encoding of column Gender Male to 0 female to 1 -->
 df['Gender'] = df['Gender'].map({'Male': 0, 'Female': 1})
+df['Gender] = [0 if i=='Male' else 1 for i in df['Gender']]
 <!-- If more than 2 distinct variablews : new columns added -->
 pd.get_dummies() (recommended for multiple categories)
 df = pd.get_dummies(df, columns=['Dummy'], prefix='Dummy')
@@ -103,6 +107,7 @@ df = pd.get_dummies(df, columns=['Dummy'], prefix='Dummy')
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+<!-- LAB1 -->
 <!-- Return np array -->
 imp = SimpleImputer(strategy="median")
 num_imputer = imp.fit_transform(df_numerical)
@@ -145,6 +150,7 @@ loadings["PC1"].sort_values(key=abs, ascending=False)
 x_pca = X.dot(pca_array.components_.T)
 print("X1 feauter",X[:,0],"XPCA1",x_pca[:,0])
 
+<!-- LAB2 -->
 from sklearn.cluster import KMeans
 <!-- Kmeans -->
 kmeans = KMeans(n_clusters=k, init='k-means++',random_state=42).fit(X_scaled)
@@ -154,6 +160,11 @@ kmeans.labels_ ,interia_ ,
  dbscan.labels_ This has 1,0,-1 also noise
 <!-- Silhoute Score -->
 db_sil =silhouette_score(X_scaled, predicted_labels) 
+<!-- Cluster Purity Calculate using confusion matrix -->
+cm = confusion_matrix(true_labels, predicted_labels)
+purity = np.sum(np.max(cm, axis=0)) / np.sum(cm)
+since majority element jaha belong us cluster ka main point wahi hai
+
 
 <!-- Lab3 -->
 from sklearn.linear_model import LinearRegression
@@ -174,8 +185,6 @@ root_mean_squared_error(y_hw, (s * X_hw + b).ravel())
 a = df_hw['Height(m)'].values
 a = a.reshape(-1,1) 2D -1 = “auto-calculate rows” 1 = “force one column” :
 OR df_hw[['Height(m)']].values 2D arrays
-
-
 
  <!-- Model Fit and slope and intercept -->
 <!-- # model fit using x[2d] need to reshape(-1,1) and y[1d] -->
@@ -212,10 +221,7 @@ scale_ = scaler.scale_
 Back to original
 ridge_coefs = ridge.coef_ / scale_
 
-<!-- Cluster Purity Calculate using confusion matrix -->
-cm = confusion_matrix(true_labels, predicted_labels)
-purity = np.sum(np.max(cm, axis=0)) / np.sum(cm)
-since majority element jaha belong us cluster ka main point wahi hai
+
 # Flow For Question
 - df load , 
 
@@ -262,9 +268,8 @@ pre.named_transformers_["num"].named_steps["impute"] -> pre.named_transformers_[
 tree = Pipeline([("preprocess", preprocess), ("model", DecisionTreeClassifier(max_depth=4, random_state=42))]).fit(X_train, y_train)
 importances = tree.named_steps["model"].feature_importances_ -> for importance of each feature basically gain typw
 
-<!-- Stratified K fold -->
+<!-- Stratified K fold Get indexes and create train and val data : No need to use train test split-->
  skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=8)
-
     for train_idx, val_idx in skf.split(X, y):
         X_train_fold, X_val_fold = X.iloc[train_idx], X.iloc[val_idx]
         now fit pipeline.fit(X_train_fold,y_train_fold)
@@ -283,4 +288,16 @@ preprocessed_numeric_train = preprocessing_numeric.transform(X_train[num_cols])
 S-1 # Convert sparse matrices to dense arrays for pairwise_distances
 cat_train_dense = preprocessed_categorical_train.toarray()
 hamming_dist = pairwise_distances(cat_train_dense, metric='hamming')
+euclidean_dist = pairwise_distances(numeric_train, metric='euclidean')
+euclidean_dist
+net_distance = (2/8)*euclidean_dist + (6/8)*hamming_dist
+TEST TRAIN PAIRWISE FOR PREDICTION
+euclidean_dist_test = pairwise_distances(numeric_test,numeric_train, metric='euclidean')
+hamming_dist_test = pairwise_distances(cat_train_dense, metric='hamming')
+net_ditance_test= 
+<!-- KNN prediciton using distnaces rather than X_train type -->
+Method-1 knn.fit(X_train, y_train) y_pred = knn.predict(X_test)
+Method-2 knn.fit(net_distance,y_train) y_pred = knn.predict(net_ditance_test)
 
+<!-- Entering new value in  df with a as json -->
+performance_df.loc[len(performance_df)] = a
